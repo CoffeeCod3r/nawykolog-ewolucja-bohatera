@@ -364,7 +364,10 @@ export type Database = {
           created_at: string
           current_tournament_id: string | null
           exp: number
+          hibernation_days_left: number
+          hibernation_used_this_month: boolean
           id: string
+          last_active_date: string | null
           onboarding_completed: boolean
           plan: string
           province: string | null
@@ -381,7 +384,10 @@ export type Database = {
           created_at?: string
           current_tournament_id?: string | null
           exp?: number
+          hibernation_days_left?: number
+          hibernation_used_this_month?: boolean
           id: string
+          last_active_date?: string | null
           onboarding_completed?: boolean
           plan?: string
           province?: string | null
@@ -398,7 +404,10 @@ export type Database = {
           created_at?: string
           current_tournament_id?: string | null
           exp?: number
+          hibernation_days_left?: number
+          hibernation_used_this_month?: boolean
           id?: string
+          last_active_date?: string | null
           onboarding_completed?: boolean
           plan?: string
           province?: string | null
@@ -461,25 +470,79 @@ export type Database = {
           },
         ]
       }
-      tournament_participants: {
+      tournament_history: {
         Row: {
+          coin_reward: number
           coins_earned: number
+          completed_at: string
+          exp_reward: number
           final_position: number | null
           id: string
           tournament_id: string
           user_id: string
         }
         Insert: {
+          coin_reward?: number
           coins_earned?: number
+          completed_at?: string
+          exp_reward?: number
           final_position?: number | null
           id?: string
           tournament_id: string
           user_id: string
         }
         Update: {
+          coin_reward?: number
           coins_earned?: number
+          completed_at?: string
+          exp_reward?: number
           final_position?: number | null
           id?: string
+          tournament_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_history_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_participants: {
+        Row: {
+          coins_earned: number
+          dragon_bonus_days: number
+          final_position: number | null
+          id: string
+          masked_position: boolean
+          tournament_id: string
+          user_id: string
+        }
+        Insert: {
+          coins_earned?: number
+          dragon_bonus_days?: number
+          final_position?: number | null
+          id?: string
+          masked_position?: boolean
+          tournament_id: string
+          user_id: string
+        }
+        Update: {
+          coins_earned?: number
+          dragon_bonus_days?: number
+          final_position?: number | null
+          id?: string
+          masked_position?: boolean
           tournament_id?: string
           user_id?: string
         }
@@ -641,6 +704,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement_dragon_bonus: { Args: never; Returns: undefined }
       is_in_same_tournament: {
         Args: { _target_user_id: string }
         Returns: boolean
