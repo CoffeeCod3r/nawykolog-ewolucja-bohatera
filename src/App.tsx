@@ -26,22 +26,85 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/logowanie" element={<Auth />} />
             <Route path="/rejestracja" element={<Auth />} />
-            <Route path="/onboarding" element={
-              <ProtectedRoute requireOnboarding={false}>{<Onboarding />}</ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/turniej" element={<ProtectedRoute><Tournament /></ProtectedRoute>} />
-            <Route path="/rankingi" element={<ProtectedRoute><Rankings /></ProtectedRoute>} />
-            <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/sklep" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
-            <Route path="/biblioteka" element={<ProtectedRoute><Library /></ProtectedRoute>} />
-            <Route path="/zadania" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-            <Route path="/ustawienia" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute requireOnboarding={false}>
+                  {<Onboarding />}
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/turniej"
+              element={
+                <ProtectedRoute>
+                  <Tournament />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rankingi"
+              element={
+                <ProtectedRoute>
+                  <Rankings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profil"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sklep"
+              element={
+                <ProtectedRoute>
+                  <Shop />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/biblioteka"
+              element={
+                <ProtectedRoute>
+                  <Library />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/zadania"
+              element={
+                <ProtectedRoute>
+                  <Tasks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ustawienia"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

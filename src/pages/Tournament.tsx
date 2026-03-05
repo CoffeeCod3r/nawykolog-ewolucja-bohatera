@@ -1,15 +1,26 @@
 import { useState, useEffect, useMemo } from "react";
 import AppLayout from "@/components/layout/AppLayout";
-import { Swords, Clock, TrendingUp, TrendingDown, Minus, Shield, Eye, Info } from "lucide-react";
+import {
+  Swords,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Shield,
+  Eye,
+  Info,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-const ANIMAL_EMOJI: Record<string, string> = {
-  wolf: "🐺", eagle: "🦅", bear: "🐻", fox: "🦊", tiger: "🐯",
-  dolphin: "🐬", owl: "🦉", dragon: "🐉", panther: "🐆", turtle: "🐢",
-};
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import AnimalAvatar from "@/components/AnimalAvatar";
+import { AnimalType } from "@/lib/animalConfig";
 
 const STAGE_LABELS = ["Jajko", "Młode", "Dorosłe", "Mistrz"];
 
@@ -73,12 +84,30 @@ const Tournament = () => {
     if (!user) return;
     setLoading(true);
 
-    const [animalRes, historyRes, habitsRes, completionsRes] = await Promise.all([
-      supabase.from("animal_definitions").select("animal_type, passive_ability_name, passive_ability_description"),
-      supabase.from("tournament_history").select("*").eq("user_id", user.id).order("completed_at", { ascending: false }).limit(10),
-      supabase.from("habits").select("id").eq("user_id", user.id).eq("archived", false),
-      supabase.from("habit_completions").select("id").eq("user_id", user.id).eq("completed_date", new Date().toISOString().split("T")[0]),
-    ]);
+    const [animalRes, historyRes, habitsRes, completionsRes] =
+      await Promise.all([
+        supabase
+          .from("animal_definitions")
+          .select(
+            "animal_type, passive_ability_name, passive_ability_description",
+          ),
+        supabase
+          .from("tournament_history")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("completed_at", { ascending: false })
+          .limit(10),
+        supabase
+          .from("habits")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("archived", false),
+        supabase
+          .from("habit_completions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("completed_date", new Date().toISOString().split("T")[0]),
+      ]);
 
     setAnimalDefs((animalRes.data as AnimalDef[]) || []);
     setHistory((historyRes.data as HistoryEntry[]) || []);
@@ -87,9 +116,16 @@ const Tournament = () => {
 
     if (profile?.current_tournament_id) {
       const [tRes, pRes] = await Promise.all([
-        supabase.from("tournaments").select("*").eq("id", profile.current_tournament_id).single(),
-        supabase.from("tournament_participants")
-          .select("*, profiles(username, animal_type, animal_stage, streak_days, exp, plan)")
+        supabase
+          .from("tournaments")
+          .select("*")
+          .eq("id", profile.current_tournament_id)
+          .single(),
+        supabase
+          .from("tournament_participants")
+          .select(
+            "*, profiles(username, animal_type, animal_stage, streak_days, exp, plan)",
+          )
           .eq("tournament_id", profile.current_tournament_id)
           .order("coins_earned", { ascending: false }),
       ]);
@@ -140,7 +176,9 @@ const Tournament = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="p-8 text-center text-muted-foreground">Ładowanie turnieju...</div>
+        <div className="p-8 text-center text-muted-foreground">
+          Ładowanie turnieju...
+        </div>
       </AppLayout>
     );
   }
@@ -157,7 +195,8 @@ const Tournament = () => {
             <div className="text-5xl">⏳</div>
             <h2 className="text-xl font-bold">Oczekiwanie na turniej</h2>
             <p className="text-muted-foreground text-sm">
-              Nowe turnieje tworzone są co 10 dni. Zostaniesz automatycznie przypisany do grupy na Twoim poziomie EXP.
+              Nowe turnieje tworzone są co 10 dni. Zostaniesz automatycznie
+              przypisany do grupy na Twoim poziomie EXP.
             </p>
           </div>
 
@@ -166,13 +205,24 @@ const Tournament = () => {
               <h2 className="font-bold text-lg mb-3">Historia turniejów</h2>
               <div className="space-y-2">
                 {history.map((h) => (
-                  <div key={h.id} className="glass-card rounded-xl p-4 flex items-center justify-between">
+                  <div
+                    key={h.id}
+                    className="glass-card rounded-xl p-4 flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">
-                        {h.final_position === 1 ? "🥇" : h.final_position === 2 ? "🥈" : h.final_position === 3 ? "🥉" : `#${h.final_position}`}
+                        {h.final_position === 1
+                          ? "🥇"
+                          : h.final_position === 2
+                            ? "🥈"
+                            : h.final_position === 3
+                              ? "🥉"
+                              : `#${h.final_position}`}
                       </span>
                       <div>
-                        <p className="text-sm font-medium">Pozycja {h.final_position}</p>
+                        <p className="text-sm font-medium">
+                          Pozycja {h.final_position}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(h.completed_at).toLocaleDateString("pl")}
                         </p>
@@ -180,7 +230,9 @@ const Tournament = () => {
                     </div>
                     <div className="text-right text-sm">
                       <p className="font-bold">{h.coins_earned} 🪙 zdobyte</p>
-                      <p className="text-primary text-xs">+{h.coin_reward} 🪙 +{h.exp_reward} EXP nagroda</p>
+                      <p className="text-primary text-xs">
+                        +{h.coin_reward} 🪙 +{h.exp_reward} EXP nagroda
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -212,7 +264,8 @@ const Tournament = () => {
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            EXP bracket: {tournament.min_exp}–{tournament.max_exp === 999999 ? "∞" : tournament.max_exp}
+            EXP bracket: {tournament.min_exp}–
+            {tournament.max_exp === 999999 ? "∞" : tournament.max_exp}
           </p>
         </div>
 
@@ -223,8 +276,12 @@ const Tournament = () => {
                 <th className="text-left px-3 py-3">#</th>
                 <th className="text-left px-3 py-3">Gracz</th>
                 <th className="text-right px-3 py-3">Monety 🪙</th>
-                <th className="text-right px-3 py-3 hidden sm:table-cell">Seria 🔥</th>
-                <th className="text-right px-3 py-3 hidden md:table-cell">EXP</th>
+                <th className="text-right px-3 py-3 hidden sm:table-cell">
+                  Seria 🔥
+                </th>
+                <th className="text-right px-3 py-3 hidden md:table-cell">
+                  EXP
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -242,30 +299,53 @@ const Tournament = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
                       className={`border-b border-border/50 transition-colors ${
-                        isMe ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/30"
+                        isMe
+                          ? "bg-primary/10 ring-1 ring-primary/30"
+                          : "hover:bg-muted/30"
                       }`}
                     >
                       <td className="px-3 py-3 font-bold text-sm">
-                        {showMasked ? "❓" : pos <= 3 ? ["🥇", "🥈", "🥉"][pos - 1] : pos}
+                        {showMasked
+                          ? "❓"
+                          : pos <= 3
+                            ? ["🥇", "🥈", "🥉"][pos - 1]
+                            : pos}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">
-                            {ANIMAL_EMOJI[p.profiles?.animal_type || ""] || "🐾"}
-                          </span>
+                          <AnimalAvatar
+                            animalType={
+                              (p.profiles?.animal_type || "wolf") as AnimalType
+                            }
+                            stage={
+                              (p.profiles?.animal_stage || 1) as 1 | 2 | 3 | 4
+                            }
+                            size="sm"
+                            animate="none"
+                          />
                           <div className="min-w-0">
                             <div className="flex items-center gap-1">
-                              <span className={`font-medium text-sm truncate ${isMe ? "text-primary" : ""}`}>
-                                {showMasked ? "???" : (p.profiles?.username || "Anonim")}
+                              <span
+                                className={`font-medium text-sm truncate ${isMe ? "text-primary" : ""}`}
+                              >
+                                {showMasked
+                                  ? "???"
+                                  : p.profiles?.username || "Anonim"}
                                 {isMe && " (Ty)"}
                               </span>
                               {p.profiles?.plan === "pro" && (
-                                <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded">PRO</span>
+                                <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded">
+                                  PRO
+                                </span>
                               )}
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="text-[10px] text-muted-foreground">
-                                {STAGE_LABELS[(p.profiles?.animal_stage || 1) - 1]}
+                                {
+                                  STAGE_LABELS[
+                                    (p.profiles?.animal_stage || 1) - 1
+                                  ]
+                                }
                               </span>
                               {animal && (
                                 <Tooltip>
@@ -273,8 +353,12 @@ const Tournament = () => {
                                     <Info className="w-3 h-3 text-muted-foreground" />
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p className="font-bold text-xs">{animal.passive_ability_name}</p>
-                                    <p className="text-xs">{animal.passive_ability_description}</p>
+                                    <p className="font-bold text-xs">
+                                      {animal.passive_ability_name}
+                                    </p>
+                                    <p className="text-xs">
+                                      {animal.passive_ability_description}
+                                    </p>
                                   </TooltipContent>
                                 </Tooltip>
                               )}
@@ -302,33 +386,46 @@ const Tournament = () => {
         {/* Daily earnings calculator */}
         <div className="glass-card rounded-xl p-4 space-y-2">
           <h3 className="font-bold text-sm flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" /> Twoje możliwe zarobki dziś
+            <TrendingUp className="w-4 h-4 text-primary" /> Twoje możliwe
+            zarobki dziś
           </h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-muted-foreground text-xs">Nawyki do zrobienia</p>
-              <p className="font-bold">{habitsRemaining} / {totalHabits}</p>
+              <p className="text-muted-foreground text-xs">
+                Nawyki do zrobienia
+              </p>
+              <p className="font-bold">
+                {habitsRemaining} / {totalHabits}
+              </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Potencjalne monety</p>
+              <p className="text-muted-foreground text-xs">
+                Potencjalne monety
+              </p>
               <p className="font-bold text-primary">+{potentialCoins} 🪙</p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Twoja pozycja</p>
               <p className="font-bold">
-                #{participants.findIndex((p) => p.user_id === user?.id) + 1} z {participants.length}
+                #{participants.findIndex((p) => p.user_id === user?.id) + 1} z{" "}
+                {participants.length}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Zdolność pasywna</p>
               <p className="font-bold text-xs">
-                {getAnimalDef(profile?.animal_type)?.passive_ability_name || "—"}
+                {getAnimalDef(profile?.animal_type)?.passive_ability_name ||
+                  "—"}
               </p>
             </div>
           </div>
-          {myParticipant?.dragon_bonus_days && myParticipant.dragon_bonus_days > 0 && (
-            <p className="text-xs text-amber-400">🐉 Dragon Bonus aktywny: {myParticipant.dragon_bonus_days} dni pozostało</p>
-          )}
+          {myParticipant?.dragon_bonus_days &&
+            myParticipant.dragon_bonus_days > 0 && (
+              <p className="text-xs text-amber-400">
+                🐉 Dragon Bonus aktywny: {myParticipant.dragon_bonus_days} dni
+                pozostało
+              </p>
+            )}
         </div>
       </div>
     </AppLayout>

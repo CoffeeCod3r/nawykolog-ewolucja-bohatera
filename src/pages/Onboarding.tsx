@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ANIMALS, PROVINCES, HABIT_TEMPLATES, type AnimalDef } from "@/components/onboarding/animals";
+import {
+  ANIMALS,
+  PROVINCES,
+  HABIT_TEMPLATES,
+  type AnimalDef,
+} from "@/components/onboarding/animals";
 import { toast } from "sonner";
 
 const MAX_HABITS_FREE = 7;
@@ -78,7 +83,9 @@ const Onboarding = () => {
       if (error) throw error;
       next();
     } catch {
-      toast.error("Nie udało się zapisać nawyków. Sprawdź połączenie i spróbuj ponownie.");
+      toast.error(
+        "Nie udało się zapisać nawyków. Sprawdź połączenie i spróbuj ponownie.",
+      );
     } finally {
       setSaving(false);
     }
@@ -89,8 +96,8 @@ const Onboarding = () => {
       prev.includes(name)
         ? prev.filter((h) => h !== name)
         : prev.length < MAX_HABITS_FREE
-        ? [...prev, name]
-        : prev
+          ? [...prev, name]
+          : prev,
     );
   };
 
@@ -151,16 +158,29 @@ const Onboarding = () => {
                     key={a.type}
                     initial={{ opacity: 0.3 }}
                     animate={{ opacity: [0.3, 0.8, 0.3] }}
-                    transition={{ duration: 3, repeat: Infinity, delay: Math.random() * 2 }}
-                    className="text-5xl"
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      delay: Math.random() * 2,
+                    }}
+                    className="inline-block"
                   >
-                    {a.emoji}
+                    {a.images ? (
+                      <img
+                        src={a.images[0]}
+                        alt={a.name}
+                        className="w-12 h-12 object-cover rounded-full"
+                      />
+                    ) : (
+                      <span className="text-5xl">{a.emoji}</span>
+                    )}
                   </motion.span>
                 ))}
               </div>
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold mb-3">
-                  Witaj w <span className="text-gradient-primary">Nawykologu</span>
+                  Witaj w{" "}
+                  <span className="text-gradient-primary">Nawykologu</span>
                 </h1>
                 <p className="text-lg text-muted-foreground">
                   Wybierz swoje zwierzę. To Twoja droga.
@@ -183,7 +203,9 @@ const Onboarding = () => {
             >
               <div className="text-center">
                 <h2 className="text-2xl font-bold">Wybierz towarzysza</h2>
-                <p className="text-muted-foreground text-sm">Każde zwierzę ma unikalną zdolność pasywną</p>
+                <p className="text-muted-foreground text-sm">
+                  Każde zwierzę ma unikalną zdolność pasywną
+                </p>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {ANIMALS.map((animal) => (
@@ -199,25 +221,51 @@ const Onboarding = () => {
                     }`}
                   >
                     <motion.div
-                      className="text-4xl mb-2"
+                      className="mb-2"
                       animate={
                         selectedAnimal?.type === animal.type
                           ? { scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }
                           : {}
                       }
-                      transition={{ duration: 0.6, repeat: selectedAnimal?.type === animal.type ? Infinity : 0, repeatDelay: 1 }}
+                      transition={{
+                        duration: 0.6,
+                        repeat:
+                          selectedAnimal?.type === animal.type ? Infinity : 0,
+                        repeatDelay: 1,
+                      }}
                     >
-                      {animal.emoji}
+                      {animal.images ? (
+                        <img
+                          src={animal.images[0]}
+                          alt={animal.name}
+                          className="w-12 h-12 object-cover rounded-full"
+                        />
+                      ) : (
+                        <span className="text-4xl">{animal.emoji}</span>
+                      )}
                     </motion.div>
                     <h3 className="font-bold text-xs mb-1">{animal.name}</h3>
-                    <p className="text-[10px] text-primary font-medium">{animal.passive}</p>
+                    <p className="text-[10px] text-primary font-medium">
+                      {animal.passive}
+                    </p>
                     <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
                       {animal.passiveDesc}
                     </p>
                     <div className="flex justify-center gap-1 mt-2">
                       {animal.stages.map((s, i) => (
-                        <span key={i} className="text-xs opacity-40">
-                          {s}
+                        <span
+                          key={i}
+                          className="text-xs opacity-40 inline-block"
+                        >
+                          {animal.images ? (
+                            <img
+                              src={animal.images[i]}
+                              alt={`${animal.name} stage ${i + 1}`}
+                              className="w-4 h-4 object-cover rounded-full"
+                            />
+                          ) : (
+                            s
+                          )}
                         </span>
                       ))}
                     </div>
@@ -225,11 +273,22 @@ const Onboarding = () => {
                 ))}
               </div>
               <div className="flex justify-between">
-                <Button variant="outline" onClick={prev}>Wstecz</Button>
+                <Button variant="outline" onClick={prev}>
+                  Wstecz
+                </Button>
                 {selectedAnimal && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                    <Button variant="hero" onClick={selectAnimalAndNext} disabled={saving}>
-                      {saving ? "Zapisywanie..." : `Wybieram ${selectedAnimal.name}a`}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Button
+                      variant="hero"
+                      onClick={selectAnimalAndNext}
+                      disabled={saving}
+                    >
+                      {saving
+                        ? "Zapisywanie..."
+                        : `Wybieram ${selectedAnimal.name}a`}
                     </Button>
                   </motion.div>
                 )}
@@ -248,7 +307,9 @@ const Onboarding = () => {
             >
               <div className="text-center">
                 <h2 className="text-2xl font-bold">Wybierz województwo</h2>
-                <p className="text-muted-foreground text-sm">Rywalizuj z graczami z Twojego regionu</p>
+                <p className="text-muted-foreground text-sm">
+                  Rywalizuj z graczami z Twojego regionu
+                </p>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {PROVINCES.map((p) => (
@@ -268,8 +329,14 @@ const Onboarding = () => {
                 ))}
               </div>
               <div className="flex justify-between">
-                <Button variant="outline" onClick={prev}>Wstecz</Button>
-                <Button variant="hero" onClick={selectProvinceAndNext} disabled={!province || saving}>
+                <Button variant="outline" onClick={prev}>
+                  Wstecz
+                </Button>
+                <Button
+                  variant="hero"
+                  onClick={selectProvinceAndNext}
+                  disabled={!province || saving}
+                >
                   {saving ? "Zapisywanie..." : "Dalej"}
                 </Button>
               </div>
@@ -288,7 +355,8 @@ const Onboarding = () => {
               <div className="text-center">
                 <h2 className="text-2xl font-bold">Dodaj pierwsze nawyki</h2>
                 <p className="text-muted-foreground text-sm">
-                  Wybierz do {MAX_HABITS_FREE} nawyków ({selectedHabits.length}/{MAX_HABITS_FREE})
+                  Wybierz do {MAX_HABITS_FREE} nawyków ({selectedHabits.length}/
+                  {MAX_HABITS_FREE})
                 </p>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -316,7 +384,11 @@ const Onboarding = () => {
                   onChange={(e) => setCustomHabit(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addCustomHabit()}
                 />
-                <Button variant="outline" onClick={addCustomHabit} disabled={selectedHabits.length >= MAX_HABITS_FREE}>
+                <Button
+                  variant="outline"
+                  onClick={addCustomHabit}
+                  disabled={selectedHabits.length >= MAX_HABITS_FREE}
+                >
                   Dodaj
                 </Button>
               </div>
@@ -334,8 +406,14 @@ const Onboarding = () => {
                 </div>
               )}
               <div className="flex justify-between">
-                <Button variant="outline" onClick={prev}>Wstecz</Button>
-                <Button variant="hero" onClick={saveHabitsAndNext} disabled={selectedHabits.length === 0 || saving}>
+                <Button variant="outline" onClick={prev}>
+                  Wstecz
+                </Button>
+                <Button
+                  variant="hero"
+                  onClick={saveHabitsAndNext}
+                  disabled={selectedHabits.length === 0 || saving}
+                >
                   {saving ? "Zapisywanie..." : "Dalej"}
                 </Button>
               </div>
@@ -390,7 +468,9 @@ const Onboarding = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.5 }}
               >
-                <h2 className="text-2xl font-bold mb-2">Twoja przygoda się zaczyna!</h2>
+                <h2 className="text-2xl font-bold mb-2">
+                  Twoja przygoda się zaczyna!
+                </h2>
                 <p className="text-muted-foreground">
                   {selectedAnimal?.name} jest gotowy do walki w arenie
                 </p>

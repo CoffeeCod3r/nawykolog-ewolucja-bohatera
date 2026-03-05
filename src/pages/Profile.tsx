@@ -3,15 +3,20 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-
-const ANIMAL_EMOJI: Record<string, string> = {
-  wolf: "🐺", eagle: "🦅", bear: "🐻", fox: "🦊", tiger: "🐯",
-  dolphin: "🐬", owl: "🦉", dragon: "🐉", panther: "🐆", turtle: "🐢",
-};
+import AnimalAvatar from "@/components/AnimalAvatar";
+import { AnimalType } from "@/lib/animalConfig";
 
 const ANIMAL_NAMES: Record<string, string> = {
-  wolf: "Wilk", eagle: "Orzeł", bear: "Niedźwiedź", fox: "Lis", tiger: "Tygrys",
-  dolphin: "Delfin", owl: "Sowa", dragon: "Smok", panther: "Pantera", turtle: "Żółw",
+  wolf: "Wilk",
+  eagle: "Orzeł",
+  bear: "Niedźwiedź",
+  fox: "Lis",
+  tiger: "Tygrys",
+  dolphin: "Delfin",
+  owl: "Sowa",
+  dragon: "Smok",
+  pantera: "Pantera",
+  turtle: "Żółw",
 };
 
 const STAGE_LABELS = ["Jajko", "Młode", "Dorosłe", "Mistrz"];
@@ -33,7 +38,11 @@ const rarityColors: Record<string, string> = {
 };
 
 const rarityLabels: Record<string, string> = {
-  common: "Pospolity", rare: "Rzadki", epic: "Epicki", legendary: "Legendarny", mythic: "Mityczny",
+  common: "Pospolity",
+  rare: "Rzadki",
+  epic: "Epicki",
+  legendary: "Legendarny",
+  mythic: "Mityczny",
 };
 
 interface UserItem {
@@ -59,8 +68,14 @@ const Profile = () => {
     if (!user) return;
     const load = async () => {
       const [itemsRes, achRes] = await Promise.all([
-        supabase.from("user_items").select("id, is_equipped, items(name, rarity)").eq("user_id", user.id),
-        supabase.from("user_achievements").select("achievement_id").eq("user_id", user.id),
+        supabase
+          .from("user_items")
+          .select("id, is_equipped, items(name, rarity)")
+          .eq("user_id", user.id),
+        supabase
+          .from("user_achievements")
+          .select("achievement_id")
+          .eq("user_id", user.id),
       ]);
       setUserItems((itemsRes.data as unknown as UserItem[]) || []);
       setAchievements((achRes.data as Achievement[]) || []);
@@ -81,7 +96,8 @@ const Profile = () => {
     );
   }
 
-  const emoji = ANIMAL_EMOJI[profile?.animal_type || ""] || "🐾";
+  const animalType = (profile?.animal_type || "wolf") as AnimalType;
+  const animalStage = (profile?.animal_stage || 1) as 1 | 2 | 3 | 4;
   const animalName = ANIMAL_NAMES[profile?.animal_type || ""] || "?";
   const stageName = STAGE_LABELS[(profile?.animal_stage || 1) - 1];
   const equippedItems = userItems.filter((i) => i.is_equipped);
@@ -91,15 +107,37 @@ const Profile = () => {
     <AppLayout>
       <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
         <div className="glass-card rounded-xl p-8 text-center">
-          <div className="text-7xl mb-4 animate-float">{emoji}</div>
+          <div className="mb-4 flex justify-center">
+            <AnimalAvatar
+              animalType={animalType}
+              stage={animalStage}
+              size="xl"
+              animate="idle"
+              showGlow={true}
+            />
+          </div>
           <h1 className="text-2xl font-bold">{profile?.username || "Gracz"}</h1>
           <p className="text-muted-foreground text-sm capitalize">
-            {animalName} — {stageName} | {profile?.province || "Brak województwa"}
+            {animalName} — {stageName} |{" "}
+            {profile?.province || "Brak województwa"}
           </p>
           <div className="flex justify-center gap-6 mt-4 text-sm">
-            <div><span className="font-bold">{(profile?.exp || 0).toLocaleString()}</span> <span className="text-muted-foreground">EXP</span></div>
-            <div><span className="font-bold">{(profile?.total_coins || 0).toLocaleString()}</span> <span className="text-muted-foreground">🪙</span></div>
-            <div><span className="font-bold">{profile?.streak_days || 0}</span> <span className="text-muted-foreground">dni 🔥</span></div>
+            <div>
+              <span className="font-bold">
+                {(profile?.exp || 0).toLocaleString()}
+              </span>{" "}
+              <span className="text-muted-foreground">EXP</span>
+            </div>
+            <div>
+              <span className="font-bold">
+                {(profile?.total_coins || 0).toLocaleString()}
+              </span>{" "}
+              <span className="text-muted-foreground">🪙</span>
+            </div>
+            <div>
+              <span className="font-bold">{profile?.streak_days || 0}</span>{" "}
+              <span className="text-muted-foreground">dni 🔥</span>
+            </div>
           </div>
           {profile?.plan && profile.plan !== "free" && (
             <span className="inline-block mt-3 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">
@@ -117,14 +155,23 @@ const Profile = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[...equippedItems, ...unequippedItems].map((item) => (
-                <div key={item.id} className={`glass-card rounded-lg p-4 border ${item.is_equipped ? "border-primary/30" : ""}`}>
+                <div
+                  key={item.id}
+                  className={`glass-card rounded-lg p-4 border ${item.is_equipped ? "border-primary/30" : ""}`}
+                >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{item.items.name}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${rarityColors[item.items.rarity] || rarityColors.common}`}>
+                    <span className="font-medium text-sm">
+                      {item.items.name}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full border ${rarityColors[item.items.rarity] || rarityColors.common}`}
+                    >
                       {rarityLabels[item.items.rarity] || "Pospolity"}
                     </span>
                   </div>
-                  {item.is_equipped && <p className="text-xs text-primary mt-1">Założony</p>}
+                  {item.is_equipped && (
+                    <p className="text-xs text-primary mt-1">Założony</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -134,11 +181,16 @@ const Profile = () => {
         <div>
           <h2 className="font-bold text-lg mb-3">Odznaczenia</h2>
           {achievements.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Brak odznaczeń. Kontynuuj grę!</p>
+            <p className="text-muted-foreground text-sm">
+              Brak odznaczeń. Kontynuuj grę!
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {achievements.map((a) => (
-                <span key={a.achievement_id} className="glass-card px-3 py-1.5 rounded-full text-sm">
+                <span
+                  key={a.achievement_id}
+                  className="glass-card px-3 py-1.5 rounded-full text-sm"
+                >
                   {ACHIEVEMENT_LABELS[a.achievement_id] || a.achievement_id}
                 </span>
               ))}
