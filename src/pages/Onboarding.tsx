@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ANIMALS, PROVINCES, HABIT_TEMPLATES, type AnimalDef } from "@/components/onboarding/animals";
 import { toast } from "sonner";
 
+const MAX_HABITS_FREE = 7;
+
 const Onboarding = () => {
   const [step, setStep] = useState(1);
   const [selectedAnimal, setSelectedAnimal] = useState<AnimalDef | null>(null);
@@ -21,40 +23,47 @@ const Onboarding = () => {
   const next = () => setStep((s) => s + 1);
   const prev = () => setStep((s) => s - 1);
 
-  const toggleHabit = (name: string) => {
-    setSelectedHabits((prev) =>
-      prev.includes(name)
-        ? prev.filter((h) => h !== name)
-        : prev.length < 3
-        ? [...prev, name]
-        : prev
-    );
-  };
-
-  const addCustomHabit = () => {
-    if (customHabit.trim() && selectedHabits.length < 3) {
-      setSelectedHabits((prev) => [...prev, customHabit.trim()]);
-      setCustomHabit("");
-    }
-  };
-
-  const finishOnboarding = async () => {
+  // Step 2: Save animal choice immediately
+  const selectAnimalAndNext = async () => {
     if (!user || !selectedAnimal) return;
     setSaving(true);
     try {
-      // Update profile
-      const { error: profileError } = await supabase
+      const { error } = await supabase
         .from("profiles")
-        .update({
-          animal_type: selectedAnimal.type,
-          province,
-          onboarding_completed: true,
-        })
+        .update({ animal_type: selectedAnimal.type })
         .eq("id", user.id);
+      if (error) throw error;
+      next();
+    } catch {
+      toast.error("Nie udało się zapisać wyboru zwierzęcia. Spróbuj ponownie.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-      if (profileError) throw profileError;
+  // Step 3: Save province immediately
+  const selectProvinceAndNext = async () => {
+    if (!user || !province) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ province })
+        .eq("id", user.id);
+      if (error) throw error;
+      next();
+    } catch {
+      toast.error("Nie udało się zapisać województwa. Spróbuj ponownie.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-      // Create habits
+  // Step 4: Save habits and go to step 5
+  const saveHabitsAndNext = async () => {
+    if (!user || selectedHabits.length === 0) return;
+    setSaving(true);
+    try {
       const habitsToInsert = selectedHabits.map((name) => {
         const template = HABIT_TEMPLATES.find((t) => t.name === name);
         return {
@@ -62,20 +71,50 @@ const Onboarding = () => {
           name,
           emoji: template?.emoji || "✅",
           category: "personal",
+          frequency: "daily",
         };
       });
+      const { error } = await supabase.from("habits").insert(habitsToInsert);
+      if (error) throw error;
+      next();
+    } catch {
+      toast.error("Nie udało się zapisać nawyków. Sprawdź połączenie i spróbuj ponownie.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-      if (habitsToInsert.length > 0) {
-        const { error: habitsError } = await supabase
-          .from("habits")
-          .insert(habitsToInsert);
-        if (habitsError) throw habitsError;
-      }
+  const toggleHabit = (name: string) => {
+    setSelectedHabits((prev) =>
+      prev.includes(name)
+        ? prev.filter((h) => h !== name)
+        : prev.length < MAX_HABITS_FREE
+        ? [...prev, name]
+        : prev
+    );
+  };
 
+  const addCustomHabit = () => {
+    if (customHabit.trim() && selectedHabits.length < MAX_HABITS_FREE) {
+      setSelectedHabits((prev) => [...prev, customHabit.trim()]);
+      setCustomHabit("");
+    }
+  };
+
+  // Step 5: Finish onboarding
+  const finishOnboarding = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("id", user.id);
+      if (error) throw error;
       await refreshProfile();
       navigate("/dashboard");
-    } catch (err: any) {
-      toast.error("Błąd: " + err.message);
+    } catch {
+      toast.error("Nie udało się zakończyć onboardingu. Spróbuj ponownie.");
     } finally {
       setSaving(false);
     }
@@ -189,8 +228,8 @@ const Onboarding = () => {
                 <Button variant="outline" onClick={prev}>Wstecz</Button>
                 {selectedAnimal && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                    <Button variant="hero" onClick={next}>
-                      Wybieram {selectedAnimal.name}a
+                    <Button variant="hero" onClick={selectAnimalAndNext} disabled={saving}>
+                      {saving ? "Zapisywanie..." : `Wybieram ${selectedAnimal.name}a`}
                     </Button>
                   </motion.div>
                 )}
@@ -230,8 +269,8 @@ const Onboarding = () => {
               </div>
               <div className="flex justify-between">
                 <Button variant="outline" onClick={prev}>Wstecz</Button>
-                <Button variant="hero" onClick={next} disabled={!province}>
-                  Dalej
+                <Button variant="hero" onClick={selectProvinceAndNext} disabled={!province || saving}>
+                  {saving ? "Zapisywanie..." : "Dalej"}
                 </Button>
               </div>
             </motion.div>
@@ -249,7 +288,7 @@ const Onboarding = () => {
               <div className="text-center">
                 <h2 className="text-2xl font-bold">Dodaj pierwsze nawyki</h2>
                 <p className="text-muted-foreground text-sm">
-                  Wybierz do 3 nawyków ({selectedHabits.length}/3)
+                  Wybierz do {MAX_HABITS_FREE} nawyków ({selectedHabits.length}/{MAX_HABITS_FREE})
                 </p>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -277,7 +316,7 @@ const Onboarding = () => {
                   onChange={(e) => setCustomHabit(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addCustomHabit()}
                 />
-                <Button variant="outline" onClick={addCustomHabit} disabled={selectedHabits.length >= 3}>
+                <Button variant="outline" onClick={addCustomHabit} disabled={selectedHabits.length >= MAX_HABITS_FREE}>
                   Dodaj
                 </Button>
               </div>
@@ -296,8 +335,8 @@ const Onboarding = () => {
               )}
               <div className="flex justify-between">
                 <Button variant="outline" onClick={prev}>Wstecz</Button>
-                <Button variant="hero" onClick={next} disabled={selectedHabits.length === 0}>
-                  Dalej
+                <Button variant="hero" onClick={saveHabitsAndNext} disabled={selectedHabits.length === 0 || saving}>
+                  {saving ? "Zapisywanie..." : "Dalej"}
                 </Button>
               </div>
             </motion.div>
@@ -312,7 +351,6 @@ const Onboarding = () => {
               className="text-center space-y-8"
             >
               <motion.div className="relative mx-auto w-40 h-40 flex items-center justify-center">
-                {/* Glow rings */}
                 <motion.div
                   className="absolute inset-0 rounded-full bg-primary/10"
                   animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
@@ -323,7 +361,6 @@ const Onboarding = () => {
                   animate={{ scale: [1, 1.3, 1], opacity: [0.7, 0.2, 0.7] }}
                   transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
                 />
-                {/* Seed → Animal */}
                 <motion.div
                   initial={{ scale: 0.3, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
