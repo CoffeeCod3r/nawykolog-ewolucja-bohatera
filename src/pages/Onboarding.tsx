@@ -33,13 +33,18 @@ const Onboarding = () => {
     if (!user || !selectedAnimal) return;
     setSaving(true);
     try {
+      console.log("Saving animal:", selectedAnimal.type, "for user:", user.id);
       const { error } = await supabase
         .from("profiles")
         .update({ animal_type: selectedAnimal.type })
         .eq("id", user.id);
-      if (error) throw error;
+      if (error) {
+        console.error("Update error:", error);
+        throw error;
+      }
       next();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save animal:", err);
       toast.error("Nie udało się zapisać wyboru zwierzęcia. Spróbuj ponownie.");
     } finally {
       setSaving(false);
@@ -51,13 +56,18 @@ const Onboarding = () => {
     if (!user || !province) return;
     setSaving(true);
     try {
+      console.log("Saving province:", province, "for user:", user.id);
       const { error } = await supabase
         .from("profiles")
         .update({ province })
         .eq("id", user.id);
-      if (error) throw error;
+      if (error) {
+        console.error("Update error:", error);
+        throw error;
+      }
       next();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save province:", err);
       toast.error("Nie udało się zapisać województwa. Spróbuj ponownie.");
     } finally {
       setSaving(false);

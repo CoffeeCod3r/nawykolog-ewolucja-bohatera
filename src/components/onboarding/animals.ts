@@ -27,6 +27,18 @@ import owl1 from "@/assets/sowa_ewolucja_1.jpg";
 import owl2 from "@/assets/sowa_ewolucja_2.jpg";
 import owl3 from "@/assets/sowa_ewolucja_3.jpg";
 import owl4 from "@/assets/sowa_ewolucja_4.jpg";
+import dragon1 from "@/assets/smok_ewolucja_1.jpg";
+import dragon2 from "@/assets/smok_ewolucja_2.jpg";
+import dragon3 from "@/assets/smok_ewolucja_3.jpg";
+import dragon4 from "@/assets/smok_ewolucja_4.jpg";
+import panther1 from "@/assets/pantera_ewolucja_1.jpg";
+import panther2 from "@/assets/pantera_ewolucja_2.jpg";
+import panther3 from "@/assets/pantera_ewolucja_3.jpg";
+import panther4 from "@/assets/pantera_ewolucja_4.jpg";
+import turtle1 from "@/assets/zolw_ewolucja1.jpg";
+import turtle2 from "@/assets/zolw_ewolucja2.jpg";
+import turtle3 from "@/assets/zolw_ewolucja3.jpg";
+import turtle4 from "@/assets/zolw_ewolucja4.jpg";
 
 export interface AnimalDef {
   type: string;
@@ -110,6 +122,7 @@ export const ANIMALS: AnimalDef[] = [
     passive: "Ogień",
     passiveDesc: "x2 EXP przez 3 dni po 7-dniowej serii",
     stages: ["🐉", "🐉", "🐉", "🐉"],
+    images: [dragon1, dragon2, dragon3, dragon4],
   },
   {
     type: "panther",
@@ -118,6 +131,7 @@ export const ANIMALS: AnimalDef[] = [
     passive: "Cień",
     passiveDesc: "Pozycja ukryta dla rywali przez 5 dni turnieju",
     stages: ["🐆", "🐆", "🐆", "🐆"],
+    images: [panther1, panther2, panther3, panther4],
   },
   {
     type: "turtle",
@@ -126,6 +140,7 @@ export const ANIMALS: AnimalDef[] = [
     passive: "Wytrwałość",
     passiveDesc: "Maksymalna utrata 20 monet dziennie",
     stages: ["🐢", "🐢", "🐢", "🐢"],
+    images: [turtle1, turtle2, turtle3, turtle4],
   },
 ];
 
