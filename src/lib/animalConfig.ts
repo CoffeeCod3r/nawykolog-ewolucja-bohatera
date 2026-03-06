@@ -115,6 +115,9 @@ export function getAnimalImageUrl(
     tiger: [tiger1, tiger2, tiger3, tiger4],
     dolphin: [dolphin1, dolphin2, dolphin3, dolphin4],
     owl: [owl1, owl2, owl3, owl4],
+    dragon: [dragon1, dragon2, dragon3, dragon4],
+    panther: [panther1, panther2, panther3, panther4],
+    turtle: [turtle1, turtle2, turtle3, turtle4],
   };
   const arr = localMap[animal];
   if (arr) {
