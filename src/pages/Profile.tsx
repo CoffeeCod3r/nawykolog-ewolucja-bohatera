@@ -15,7 +15,7 @@ const ANIMAL_NAMES: Record<string, string> = {
   dolphin: "Delfin",
   owl: "Sowa",
   dragon: "Smok",
-  pantera: "Pantera",
+  panther: "Pantera",
   turtle: "Żółw",
 };
 

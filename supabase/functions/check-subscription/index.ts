@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,10 +8,10 @@ const corsHeaders = {
 };
 
 const PRODUCT_TIERS: Record<string, string> = {
-  "prod_U5SMkqbHu3mvdq": "plus",  // PLUS monthly product
-  "prod_U5SMTxxEU5GrJJ": "plus",  // PLUS yearly product
-  "prod_U5SNvpYaa6bXLq": "pro",   // PRO monthly product
-  "prod_U5SN6mToigY3fZ": "pro",   // PRO yearly product
+  "prod_U5SMkqbHu3mvdq": "plus",
+  "prod_U5SMTxxEU5GrJJ": "plus",
+  "prod_U5SNvpYaa6bXLq": "pro",
+  "prod_U5SN6mToigY3fZ": "pro",
 };
 
 serve(async (req) => {
@@ -38,7 +38,6 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
-      // Update profile plan to free
       await supabaseClient.from("profiles").update({ plan: "free" }).eq("id", user.id);
       return new Response(JSON.stringify({ subscribed: false, plan: "free" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -60,7 +59,6 @@ serve(async (req) => {
     const plan = PRODUCT_TIERS[productId] || "plus";
     const subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
 
-    // Sync plan to profile
     await supabaseClient.from("profiles").update({ plan }).eq("id", user.id);
 
     return new Response(JSON.stringify({

@@ -104,22 +104,15 @@ export const useStatsDaily = () => {
         await supabase.functions.invoke("get-stats-today");
 
       if (err) {
-        console.warn(
-          "Function not available, falling back to client-side calculation:",
-          err,
-        );
-        // Fallback to client-side calculation
+        console.warn("Function not available, falling back:", err);
         await fetchStatsClientSide();
         return;
       }
+      // The function returns stats directly
       setStats(data);
       setError(null);
     } catch (err) {
-      console.warn(
-        "Function error, falling back to client-side calculation:",
-        err,
-      );
-      // Fallback to client-side calculation
+      console.warn("Function error, falling back:", err);
       await fetchStatsClientSide();
     } finally {
       setLoading(false);

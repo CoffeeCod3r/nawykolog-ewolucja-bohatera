@@ -1,10 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -20,38 +19,45 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") || "",
       Deno.env.get("SUPABASE_ANON_KEY") || "",
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      },
+      { global: { headers: { Authorization: authHeader } } },
     );
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser(token);
-
+    const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get year range
     const yearStart = `${year}-01-01`;
     const yearEnd = `${year}-12-31`;
 
-    // Get daily stats for the year
-    const { data: yearlyDayStats } = await supabase
-      .from("user_daily_stats")
-      .select("*")
+    // Get all completions for the year
+    const { data: completions } = await supabase
+      .from("habit_completions")
+      .select("id, habit_id, completed_date")
       .eq("user_id", user.id)
-      .gte("date", yearStart)
-      .lte("date", yearEnd)
-      .order("date");
+      .gte("completed_date", yearStart)
+      .lte("completed_date", yearEnd);
 
-    // Create heatmap data (GitHub style - 52 weeks x 7 days)
+    // Get habits
+    const { data: habits } = await supabase
+      .from("habits")
+      .select("id, name, emoji")
+      .eq("user_id", user.id)
+      .eq("archived", false);
+
+    const totalHabits = habits?.length || 1;
+
+    // Group by date
+    const countByDate: Record<string, number> = {};
+    const habitCountMap: Record<string, number> = {};
+    completions?.forEach(c => {
+      countByDate[c.completed_date] = (countByDate[c.completed_date] || 0) + 1;
+      habitCountMap[c.habit_id] = (habitCountMap[c.habit_id] || 0) + 1;
+    });
+
+    // Create heatmap (GitHub style)
     const heatmapData = [];
     const startDate = new Date(`${year}-01-01`);
     const endDate = new Date(`${year}-12-31`);
@@ -59,68 +65,45 @@ serve(async (req) => {
 
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split("T")[0];
-      const stat = yearlyDayStats?.find((d) => d.date === dateStr);
+      const completed = countByDate[dateStr] || 0;
+      const pct = totalHabits > 0 ? Math.round((completed / totalHabits) * 100) : 0;
       heatmapData.push({
         date: dateStr,
-        week: Math.floor(
-          (currentDate.getTime() - startDate.getTime()) /
-            (7 * 24 * 60 * 60 * 1000),
-        ),
+        week: Math.floor((currentDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)),
         dayOfWeek: currentDate.getDay(),
-        percentComplete: stat?.completion_percent || 0,
-        intensity: stat ? Math.floor(stat.completion_percent / 25) : 0,
+        percentComplete: pct,
+        intensity: Math.min(4, Math.floor(pct / 25)),
       });
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Get user profile for animal info
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+    // Calculate longest streak
+    const sortedDates = Object.keys(countByDate).sort();
+    let longestStreak = 0;
+    let currentStreak = 0;
+    let prevDate: Date | null = null;
+    for (const dateStr of sortedDates) {
+      const d = new Date(dateStr);
+      if (prevDate) {
+        const diff = (d.getTime() - prevDate.getTime()) / (24 * 60 * 60 * 1000);
+        if (diff === 1) {
+          currentStreak++;
+        } else {
+          currentStreak = 1;
+        }
+      } else {
+        currentStreak = 1;
+      }
+      longestStreak = Math.max(longestStreak, currentStreak);
+      prevDate = d;
+    }
 
-    // Get yearly snapshot data
-    const { data: snapshot } = await supabase
-      .from("yearly_snapshots")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("year", year)
-      .single();
+    // Best habit
+    const bestEntry = Object.entries(habitCountMap).sort(([, a], [, b]) => b - a)[0];
+    const bestHabitId = bestEntry?.[0];
+    const bestHabit = habits?.find(h => h.id === bestHabitId) || null;
 
-    // Calculate year in numbers
-    const totalDaysActive =
-      yearlyDayStats?.filter((d) => d.habits_completed > 0).length || 0;
-    const totalCompletions =
-      yearlyDayStats?.reduce((sum, d) => sum + d.habits_completed, 0) || 0;
-    const totalCoins =
-      yearlyDayStats?.reduce((sum, d) => sum + d.coins_earned, 0) || 0;
-    const totalExp =
-      yearlyDayStats?.reduce((sum, d) => sum + d.exp_earned, 0) || 0;
-
-    // Get best habit of the year
-    const { data: allCompletions } = await supabase
-      .from("habit_completions")
-      .select("habit_id")
-      .eq("user_id", user.id)
-      .gte("completed_date", yearStart)
-      .lte("completed_date", yearEnd);
-
-    const habitCounts: Record<string, number> = {};
-    allCompletions?.forEach((c) => {
-      habitCounts[c.habit_id] = (habitCounts[c.habit_id] || 0) + 1;
-    });
-
-    const bestHabitId = Object.entries(habitCounts).sort(
-      ([, a], [, b]) => b - a,
-    )[0]?.[0];
-    const { data: bestHabit } = await supabase
-      .from("habits")
-      .select("id, name, emoji")
-      .eq("id", bestHabitId)
-      .single();
-
-    // Get tournament stats
+    // Tournament stats
     const { data: tournaments } = await supabase
       .from("tournament_history")
       .select("final_position")
@@ -129,35 +112,36 @@ serve(async (req) => {
       .lte("completed_at", yearEnd);
 
     const tournamentsCompleted = tournaments?.length || 0;
-    const avgPosition =
-      tournaments && tournaments.length > 0
-        ? tournaments.reduce((sum, t) => sum + (t.final_position || 0), 0) /
-          tournaments.length
-        : null;
+    const avgPosition = tournaments && tournaments.length > 0
+      ? tournaments.reduce((s, t) => s + (t.final_position || 0), 0) / tournaments.length
+      : null;
 
-    // Get items acquired in this year
-    const { data: itemsAcquired } = await supabase
+    // Items acquired
+    const { data: items } = await supabase
       .from("user_items")
       .select("id")
       .eq("user_id", user.id)
       .gte("acquired_at", yearStart)
       .lte("acquired_at", yearEnd);
 
+    const totalCompletions = completions?.length || 0;
+    const totalDaysActive = Object.keys(countByDate).length;
+
     const stats = {
       heatmap: heatmapData,
       yearInNumbers: {
         totalCompletions,
         totalDaysActive,
-        longestStreak: profile?.streak_days || 0, // This should be calculated per year
-        totalCoins,
-        totalExp,
+        longestStreak,
+        totalCoins: totalCompletions * 5,
+        totalExp: totalCompletions * 10,
         favoriteHabit: bestHabit,
-        favoriteHabitCompletions: habitCounts[bestHabitId || ""] || 0,
+        favoriteHabitCompletions: bestEntry?.[1] || 0,
         tournamentsCompleted,
         avgTournamentPosition: avgPosition,
-        itemsAcquired: itemsAcquired?.length || 0,
+        itemsAcquired: items?.length || 0,
       },
-      snapshot: snapshot || null,
+      snapshot: null,
     };
 
     return new Response(JSON.stringify(stats), {
@@ -165,8 +149,7 @@ serve(async (req) => {
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

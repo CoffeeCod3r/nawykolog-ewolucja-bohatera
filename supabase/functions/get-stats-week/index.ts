@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const DAY_NAMES = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -19,124 +20,106 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") || "",
       Deno.env.get("SUPABASE_ANON_KEY") || "",
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      },
+      { global: { headers: { Authorization: authHeader } } },
     );
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser(token);
-
+    const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Calculate week dates
+    // Calculate Monday-based week
     const today = new Date();
     const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - dayOfWeek);
+    weekStart.setDate(today.getDate() + mondayOffset);
     weekStart.setHours(0, 0, 0, 0);
 
-    const weekDays = [];
+    const weekDays: string[] = [];
     for (let i = 0; i < 7; i++) {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + i);
-      weekDays.push(date.toISOString().split("T")[0]);
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      weekDays.push(d.toISOString().split("T")[0]);
     }
 
-    // Get daily stats for each day
-    const { data: dailyStats } = await supabase
-      .from("user_daily_stats")
-      .select("*")
+    // Get completions for this week
+    const { data: completions } = await supabase
+      .from("habit_completions")
+      .select("id, completed_date")
       .eq("user_id", user.id)
-      .in("date", weekDays)
-      .order("date");
+      .gte("completed_date", weekDays[0])
+      .lte("completed_date", weekDays[6]);
 
-    // Create data for each day (fill in missing days with 0s)
-    const week = weekDays.map((date) => {
-      const stat = dailyStats?.find((d) => d.date === date);
+    // Get total habits count
+    const { data: habits } = await supabase
+      .from("habits")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("archived", false);
+
+    const totalHabits = habits?.length || 0;
+
+    // Group completions by date
+    const countByDate: Record<string, number> = {};
+    completions?.forEach(c => {
+      countByDate[c.completed_date] = (countByDate[c.completed_date] || 0) + 1;
+    });
+
+    const week = weekDays.map(date => {
+      const completed = countByDate[date] || 0;
+      const pct = totalHabits > 0 ? Math.round((completed / totalHabits) * 100) : 0;
+      const d = new Date(date);
       return {
         date,
-        dayOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-          new Date(date).getDay()
-        ],
-        completedHabits: stat?.habits_completed || 0,
-        totalHabits: stat?.habits_total || 0,
-        percentComplete: stat?.completion_percent || 0,
-        coinsEarned: stat?.coins_earned || 0,
-        expEarned: stat?.exp_earned || 0,
+        dayOfWeek: DAY_NAMES[d.getDay()],
+        completedHabits: completed,
+        totalHabits,
+        percentComplete: pct,
+        coinsEarned: completed * 5,
+        expEarned: completed * 10 + (pct === 100 && totalHabits > 0 ? 20 : 0),
       };
     });
 
-    // Calculate totals
     const totals = {
-      totalCompletions: week.reduce((sum, day) => sum + day.completedHabits, 0),
-      completeDays: week.filter((day) => day.percentComplete === 100).length,
-      totalCoins: week.reduce((sum, day) => sum + day.coinsEarned, 0),
-      totalExp: week.reduce((sum, day) => sum + day.expEarned, 0),
+      totalCompletions: week.reduce((s, d) => s + d.completedHabits, 0),
+      completeDays: week.filter(d => d.percentComplete === 100).length,
+      totalCoins: week.reduce((s, d) => s + d.coinsEarned, 0),
+      totalExp: week.reduce((s, d) => s + d.expEarned, 0),
     };
 
-    // Find best day
-    const bestDay = week.reduce(
-      (best, day) => (day.percentComplete > best.percentComplete ? day : best),
-      week[0] || {},
-    );
+    const bestDay = week.reduce((best, day) =>
+      day.percentComplete > best.percentComplete ? day : best, week[0]);
 
-    // Compare with previous week
+    // Previous week comparison
     const prevWeekStart = new Date(weekStart);
     prevWeekStart.setDate(weekStart.getDate() - 7);
+    const prevWeekEnd = new Date(weekStart);
+    prevWeekEnd.setDate(weekStart.getDate() - 1);
 
-    const prevWeekDays = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(prevWeekStart);
-      date.setDate(prevWeekStart.getDate() + i);
-      prevWeekDays.push(date.toISOString().split("T")[0]);
-    }
-
-    const { data: prevDailyStats } = await supabase
-      .from("user_daily_stats")
-      .select("*")
+    const { data: prevCompletions } = await supabase
+      .from("habit_completions")
+      .select("id")
       .eq("user_id", user.id)
-      .in("date", prevWeekDays);
+      .gte("completed_date", prevWeekStart.toISOString().split("T")[0])
+      .lte("completed_date", prevWeekEnd.toISOString().split("T")[0]);
 
-    const prevTotals = {
-      totalCompletions:
-        prevDailyStats?.reduce((sum, d) => sum + d.habits_completed, 0) || 0,
-    };
+    const prevTotal = prevCompletions?.length || 0;
+    const diff = prevTotal > 0 ? Math.round(((totals.totalCompletions - prevTotal) / prevTotal) * 100) : 0;
 
-    const completionDifference =
-      prevTotals.totalCompletions > 0
-        ? Math.round(
-            ((totals.totalCompletions - prevTotals.totalCompletions) /
-              prevTotals.totalCompletions) *
-              100,
-          )
-        : 0;
-
-    const stats = {
+    return new Response(JSON.stringify({
       week,
       totals,
       bestDay,
-      previousWeekComparison: {
-        percentDifference: completionDifference,
-        isImprovement: completionDifference >= 0,
-      },
-    };
-
-    return new Response(JSON.stringify(stats), {
+      previousWeekComparison: { percentDifference: diff, isImprovement: diff >= 0 },
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

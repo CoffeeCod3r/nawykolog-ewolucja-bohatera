@@ -29,6 +29,18 @@ import owl1 from "@/assets/sowa_ewolucja_1.jpg";
 import owl2 from "@/assets/sowa_ewolucja_2.jpg";
 import owl3 from "@/assets/sowa_ewolucja_3.jpg";
 import owl4 from "@/assets/sowa_ewolucja_4.jpg";
+import dragon1 from "@/assets/smok_ewolucja_1.jpg";
+import dragon2 from "@/assets/smok_ewolucja_2.jpg";
+import dragon3 from "@/assets/smok_ewolucja_3.jpg";
+import dragon4 from "@/assets/smok_ewolucja_4.jpg";
+import panther1 from "@/assets/pantera_ewolucja_1.jpg";
+import panther2 from "@/assets/pantera_ewolucja_2.jpg";
+import panther3 from "@/assets/pantera_ewolucja_3.jpg";
+import panther4 from "@/assets/pantera_ewolucja_4.jpg";
+import turtle1 from "@/assets/zolw_ewolucja1.jpg";
+import turtle2 from "@/assets/zolw_ewolucja2.jpg";
+import turtle3 from "@/assets/zolw_ewolucja3.jpg";
+import turtle4 from "@/assets/zolw_ewolucja4.jpg";
 
 export const ANIMAL_TYPES = {
   wolf: { en: "wolf", pl: "wilk" },
@@ -103,6 +115,9 @@ export function getAnimalImageUrl(
     tiger: [tiger1, tiger2, tiger3, tiger4],
     dolphin: [dolphin1, dolphin2, dolphin3, dolphin4],
     owl: [owl1, owl2, owl3, owl4],
+    dragon: [dragon1, dragon2, dragon3, dragon4],
+    panther: [panther1, panther2, panther3, panther4],
+    turtle: [turtle1, turtle2, turtle3, turtle4],
   };
   const arr = localMap[animal];
   if (arr) {
