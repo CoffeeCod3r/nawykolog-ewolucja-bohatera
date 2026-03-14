@@ -714,6 +714,14 @@ export type Database = {
         Args: { _tournament_id: string }
         Returns: boolean
       }
+      materialize_daily_stats: {
+        Args: { p_date: string; p_user_id: string }
+        Returns: undefined
+      }
+      materialize_daily_stats_range: {
+        Args: { p_end: string; p_start: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
